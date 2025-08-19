@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { lilitaOne } from "@/app/utils/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
+      <body className={`min-h-screen min-w-screen ${lilitaOne.className}`}
       >
         {children}
       </body>
