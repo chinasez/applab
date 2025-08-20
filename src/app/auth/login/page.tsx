@@ -33,7 +33,7 @@ export default function LoginPage() {
         return NextResponse.json({ Error: error.message }, { status: 400 });
 
       setLoading(false);
-      router.push("/");
+      router.push("/dashboard");
     } catch (error) {
       alert("bruh");
       return;
@@ -84,6 +84,11 @@ export default function LoginPage() {
               className={`${lilitaOne.className} w-full`}
             >
               Submit
+              {loading && (
+              <p
+            className="text-center">
+              Loading...
+            </p>)}
             </Button>
           </Form.Item>
         </Form>

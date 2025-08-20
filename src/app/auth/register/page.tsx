@@ -71,9 +71,14 @@ export default function RegisterPage(): React.ReactNode {
           </Form.Item>
   
           <Form.Item label={null}>
-            <Button type="primary" htmlType="submit" onClick={handleSubmit} className={`${lilitaOne.className} w-full`}>
+            <Button type="primary" htmlType="submit" onClick={handleSubmit} className={`${lilitaOne.className} w-full mb-5`}>
               Submit
             </Button>
+            {loading && (
+              <p
+            className="text-center">
+              Loading...
+            </p>)}
           </Form.Item>
         </Form>
       </div>
