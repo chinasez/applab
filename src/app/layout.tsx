@@ -16,7 +16,7 @@ export default function RootLayout({
       <body className={`min-h-screen min-w-screen ${lilitaOne.className}`}
       >
         {children}
-      </body>
-    </html>
+    </body>
+  </html>
   );
 }
