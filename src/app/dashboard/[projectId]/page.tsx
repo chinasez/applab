@@ -16,11 +16,11 @@ export default async function Project({params, searchParams}: PageProps) {
     async function renderEditor() {
         switch (type) {
             case 'table':
-                return <TableEditor projectId={projectId}></TableEditor>;
+                return <TableEditor projectId={projectId} isDrawerOpen={false}></TableEditor>;
             case 'document':
                 return <DocEditor projectId={projectId}></DocEditor>;
             case 'tasks':
-                return <TaskEditor></TaskEditor>;
+                return <TaskEditor projectId={projectId}></TaskEditor>;
             default:
                 return <p>error</p>;
         }  

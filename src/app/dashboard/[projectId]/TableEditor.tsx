@@ -4,15 +4,13 @@ import type { InputRef, TableProps } from "antd";
 import { Button, Form, Input, Popconfirm, Table } from "antd";
 import { supabase } from "@/app/utils/supabase/client";
 
-
 type FormInstance<T> = React.ComponentRef<typeof Form<T>>;
 
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
 
 interface Item {
   key: string;
-  name: string;
-  address: string;
+  [key: string]: any;
 }
 
 interface EditableRowProps {
@@ -33,7 +31,7 @@ const EditableRow: React.FC<EditableRowProps> = ({ index, ...props }) => {
 interface EditableCellProps {
   title: React.ReactNode;
   editable: boolean;
-  dataIndex: keyof Item;
+  dataIndex: string;
   record: Item;
   handleSave: (record: Item) => void;
 }
@@ -65,7 +63,6 @@ const EditableCell: React.FC<React.PropsWithChildren<EditableCellProps>> = ({
   const save = async () => {
     try {
       const values = await form.validateFields();
-
       toggleEdit();
       handleSave({ ...record, ...values });
     } catch (errInfo) {
@@ -100,85 +97,164 @@ const EditableCell: React.FC<React.PropsWithChildren<EditableCellProps>> = ({
 
 interface DataType {
   key: React.Key;
-  name: string;
-  data: string;
+  [key: string]: any;
 }
 
 interface TableEditorProps {
   projectId: string;
+  isDrawerOpen: boolean;
 }
 
 type ColumnTypes = Exclude<TableProps<DataType>["columns"], undefined>;
 
-export default function TableEditor({ projectId }: TableEditorProps) {
-    const project_id = projectId;
-    const [fields, setFields] = useState<any[]>([]);
-    const [dataSource, setDataSource] = useState<DataType[]>([]);
-    
-    useEffect(() => {
-        async function loadData() {
-            try {
-                const {data: collections, error: collectionsError} = await supabase.from("collections").select('fields').eq('project_id', project_id).single();
-                if (collectionsError) 
-                    throw collectionsError;
-                setFields(collections.fields);
-
-                const {data: collectionsId, error: collectionsIdError} = await supabase.from("collections").select('id').eq('project_id', project_id).single();
-                if (collectionsIdError)
-                    throw collectionsIdError;
-
-                const {data: records, error: recordsError} = await supabase.from('records').select('data').eq('collection_id', collectionsId?.id).single();
-                if (recordsError)
-                    throw recordsError;
-
-                setDataSource(records?.data);
-            } catch (error) {
-                console.error('Error loading collections', error);
-            }
-        }
-
-        loadData();
-        
-    }, [project_id])
-
-
+export default function TableEditor({ projectId, isDrawerOpen }: TableEditorProps) {
+  const project_id = projectId;
+  const [fields, setFields] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<DataType[]>([]);
+  const [collectionId, setCollectionId] = useState<string>("");
   const [count, setCount] = useState(2);
 
-  const handleDelete = (key: React.Key) => {
-    const newData = dataSource.filter((item) => item.key !== key);
-    setDataSource(newData);
-  };
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const { data: collection, error: collectionError } = await supabase
+          .from("collections")
+          .select('*')
+          .eq('project_id', project_id)
+          .single();
+        
+        if (collectionError) throw collectionError;
+        
+        if (collection) {
+          setFields(collection.fields || []);
+          setCollectionId(collection.id);
 
-//   render: (_, record) =>
-//         dataSource.length >= 1 ? (
-//           <Popconfirm
-//             title="Sure to delete?"
-//             onConfirm={() => handleDelete(record.key)}
-//           >
-//             <a>Delete</a>
-//           </Popconfirm>
-//         ) : null,
+          const { data: records, error: recordsError } = await supabase
+            .from('records')
+            .select('data')
+            .eq('collection_id', collection.id)
+            .single();
 
-  const handleAdd = () => {
-    const newData: DataType = {
-      key: count,
-      name: `name`,
-      data: `data`,
-    };
-    setDataSource([...dataSource, newData]);
-    setCount(count + 1);
-  };
+          if (recordsError) throw recordsError;
 
-  const handleSave = (row: DataType) => {
-    const newData = [...dataSource];
-    const index = newData.findIndex((item) => row.key === item.key);
-    const item = newData[index];
-    newData.splice(index, 1, {
-      ...item,
-      ...row,
-    });
+          if (records?.data) {
+            const dataWithKeys = records.data.map((item: any, index: number) => ({
+              ...item,
+              key: item.key || index.toString()
+            }));
+            setDataSource(dataWithKeys);
+            setCount(dataWithKeys.length + 1);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    }
+
+    loadData();
+  }, [project_id]);
+
+  // Функция для генерации значений по умолчанию на основе типа поля
+  const getDefaultValue = (field: any) => {
+    const fieldName = field.dataIndex.toLowerCase();
     
-    setDataSource(newData);
+    // Генерируем значения на основе имени поля
+    if (fieldName.includes('name') || fieldName.includes('title')) {
+      return `New Item ${count}`;
+    }
+    if (fieldName.includes('email')) {
+      return `email${count}@example.com`;
+    }
+    if (fieldName.includes('phone')) {
+      return `+1 (555) ${100 + count}-${1000 + count}`;
+    }
+    if (fieldName.includes('date')) {
+      return new Date().toISOString().split('T')[0];
+    }
+    if (fieldName.includes('price') || fieldName.includes('cost')) {
+      return (count * 10).toString();
+    }
+    if (fieldName.includes('quantity')) {
+      return Math.floor(Math.random() * 100) + 1;
+    }
+    if (fieldName.includes('status')) {
+      return 'active';
+    }
+    if (fieldName.includes('description')) {
+      return 'Sample description text';
+    }
+    
+    // Для остальных полей
+    return `Value ${count}`;
+  };
+
+  const handleDelete = async (key: React.Key) => {
+    try {
+      const newData = dataSource.filter((item) => item.key !== key);
+      setDataSource(newData);
+
+      if (collectionId) {
+        const { error } = await supabase
+          .from('records')
+          .update({ data: newData })
+          .eq('collection_id', collectionId);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error deleting row:', error);
+    }
+  };
+
+  const handleAdd = async () => {
+    try {
+      const newRow: DataType = {
+        key: count.toString(),
+      };
+
+      // Заполняем все поля значениями по умолчанию
+      fields.forEach((field) => {
+        newRow[field.dataIndex] = getDefaultValue(field);
+      });
+
+      const newData = [...dataSource, newRow];
+      setDataSource(newData);
+      setCount(count + 1);
+
+      if (collectionId) {
+        const { error } = await supabase
+          .from('records')
+          .update({ data: newData })
+          .eq('collection_id', collectionId);
+
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error('Error adding row:', error);
+    }
+  };
+
+  const handleSave = async (row: DataType) => {
+    try {
+      const newData = [...dataSource];
+      const index = newData.findIndex((item) => row.key === item.key);
+      
+      if (index > -1) {
+        newData[index] = { ...newData[index], ...row };
+        setDataSource(newData);
+
+        if (collectionId) {
+          const { error } = await supabase
+            .from('records')
+            .update({ data: newData })
+            .eq('collection_id', collectionId);
+
+          if (error) throw error;
+        }
+      }
+    } catch (error) {
+      console.error('Error saving row:', error);
+    }
   };
 
   const components = {
@@ -188,24 +264,45 @@ export default function TableEditor({ projectId }: TableEditorProps) {
     },
   };
 
-  const columns = fields.map((col) => {
-    if (!col.editable) {
-      return col;
-    }
-    return {
-      ...col,
-      onCell: (record: DataType) => ({
-        record,
-        editable: col.editable,
-        dataIndex: col.dataIndex,
-        title: col.title,
-        handleSave,
-      }),
-    };
-  });
+  const columns = fields.map((col) => ({
+    ...col,
+    editable: true,
+    onCell: (record: DataType) => ({
+      record,
+      editable: true,
+      dataIndex: col.dataIndex,
+      title: col.title,
+      handleSave,
+    }),
+  }));
+
+  const actionColumn = {
+    title: 'Actions',
+    dataIndex: 'actions',
+    width: 100,
+    render: (_: any, record: DataType) =>
+      dataSource.length >= 1 ? (
+        <Popconfirm
+          title="Sure to delete?"
+          onConfirm={() => handleDelete(record.key)}
+        >
+          <a style={{ color: '#ff4d4f' }}>Delete</a>
+        </Popconfirm>
+      ) : null,
+  };
+
+  const allColumns = [...columns, actionColumn];
 
   return (
-    <div>
+    <div 
+      className="table-editor"
+      style={{
+        marginLeft: isDrawerOpen ? '400px' : '0',
+        transition: 'margin-left 0.3s ease',
+        padding: '20px',
+        minWidth: isDrawerOpen ? 'calc(100% - 400px)' : '100%'
+      }}
+    >
       <Button onClick={handleAdd} type="primary" style={{ marginBottom: 16 }}>
         Add a row
       </Button>
@@ -214,7 +311,9 @@ export default function TableEditor({ projectId }: TableEditorProps) {
         rowClassName={() => "editable-row"}
         bordered
         dataSource={dataSource}
-        columns={columns as ColumnTypes}
+        columns={allColumns as ColumnTypes}
+        pagination={false}
+        scroll={{ x: true }}
       />
     </div>
   );
