@@ -1,201 +1,110 @@
 "use client";
-import { lilitaOne } from "@/app/utils/fonts";
+import { useState } from "react";
 import { Button, Input, Modal, Form, DatePicker } from "antd";
-import { useState, useEffect } from "react";
-import { supabase } from "@/app/utils/supabase/client";
+import { useCollection } from "@/hooks/useCollection";
+import { lilitaOne } from "@/app/utils/fonts";
 import dayjs from 'dayjs';
 import { v4 as uuidv4 } from "uuid";
 
-interface TaskEditorProps {
-  projectId: string;
-}
-
 interface Task {
-  id: string | number;
+  id: string;
   name: string;
   deadline: string; 
   status: boolean;
 }
 
-export default function TaskEditor({ projectId }: TaskEditorProps) {
-  useEffect(() => {
-    async function loadData() {
-      const { data: collId, error } = await supabase
-        .from('collections')
-        .select('*')
-        .eq('project_id', projectId)
-        .single();
-      
-      if (error) console.error(error);
-      if (!collId) return;
-      
-      setCollectionId(collId.id);
-      setTitle(collId.fields.title);
-      
-      const { data: records, error: recordsError } = await supabase
-        .from('records')
-        .select('data')
-        .eq('collection_id', collId.id)
-        .single();
-      
-      if (recordsError) console.error(recordsError);
-      
-      if (records?.data) {
-        setRecords(records.data);
-      }
-    }
-    loadData();
-  }, [projectId]);
+interface TaskEditorProps {
+  projectId: string;
+}
 
-  const [title, setTitle] = useState("");
-  const [collectionId, setCollectionId] = useState("");
-  const [records, setRecords] = useState<Task[]>([]);
+export default function TaskEditor({ projectId }: TaskEditorProps) {
+  const { collection, records, updateRecords, updateCollectionFields } = useCollection(projectId);
   const [isModalOpen, setIsModalOpen] = useState(false); 
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form] = Form.useForm();
 
-  async function changeStatus(id: string | number, NewStatus: boolean) {
-    try {
-      const updatedRecords = records.map(task => 
-        task.id === id ? { ...task, status: NewStatus } : task
-      );
+  if (!collection || !records) return <div>Loading...</div>;
 
-      const { error } = await supabase
-        .from('records')
-        .update({ data: updatedRecords })
-        .eq('collection_id', collectionId);
+  const title = collection.fields?.title || "";
+  const tasks: Task[] = Array.isArray(records) ? records : [];
 
-      if (error) console.error(error);
-      setRecords(updatedRecords);
-    } catch (error) {
-      console.error(error);
-    }
-  }
+  const handleTitleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value;
+    await updateCollectionFields({ ...collection.fields, title: newTitle });
+  };
 
-  function EditingTask(task: Task) {
+  const changeStatus = async (id: string, newStatus: boolean) => {
+    const updatedTasks = tasks.map(task => 
+      task.id === id ? { ...task, status: newStatus } : task
+    );
+    await updateRecords(updatedTasks);
+  };
+
+  const handleEditTask = (task: Task) => {
     setEditingTask(task);
-    
-
-    let deadlineDate = null;
-    if (task.deadline) {
-      try {
-
-        deadlineDate = dayjs(task.deadline);
-
-        if (!deadlineDate.isValid()) {
-          deadlineDate = null;
-        }
-      } catch (error) {
-        deadlineDate = null;
-      }
-    }
-    
     form.setFieldsValue({
       name: task.name,
-      deadline: deadlineDate,
+      deadline: task.deadline ? dayjs(task.deadline) : null,
     });
     setIsModalOpen(true);
-  }
+  };
 
-  function CloseModal() {
+  const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingTask(null);
     form.resetFields();
-  }
-
-  async function HandleSubmit(values: { name: string; deadline: any }) {
-    if (!editingTask) return;
-
-    try {
-
-      let formattedDeadline = '';
-      if (values.deadline) {
-
-        formattedDeadline = values.deadline.format();
-      }
-
-      const updatedRecords = records.map(task => 
-        task.id === editingTask.id 
-          ? {
-              ...task, 
-              name: values.name,
-              deadline: formattedDeadline
-            } 
-          : task
-      );
-
-      const { error } = await supabase
-        .from("records")
-        .update({ data: updatedRecords })
-        .eq('collection_id', collectionId);
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      setRecords(updatedRecords);
-      setIsModalOpen(false);
-      setEditingTask(null);
-      form.resetFields();
-      
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return '';
-    
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString(); 
-    } catch (error) {
-      return dateString.substring(0, 10); 
-    }
   };
 
-  async function ChangeTitle(e: React.ChangeEvent<HTMLInputElement>) {
-    setTitle(e.target.value);
+  const handleSubmit = async (values: { name: string; deadline: any }) => {
+    if (!editingTask) return;
 
-    try {
-    const {error} = await supabase.from('collections').update({fields: {"title": title}}).eq('project_id', projectId);
-    if (error) console.error(error);
-    else console.log('succesfully changed title')
-    } catch (error) {
-      console.error(error);
-    }
-  }
+    const formattedDeadline = values.deadline ? values.deadline.format() : '';
+    const updatedTasks = tasks.map(task => 
+      task.id === editingTask.id 
+        ? { ...task, name: values.name, deadline: formattedDeadline }
+        : task
+    );
 
-  async function createNewTask() {
+    await updateRecords(updatedTasks);
+    handleCloseModal();
+  };
+
+  const createNewTask = async () => {
     const newTask: Task = {
       id: uuidv4(),
       name: 'New task',
       deadline: '',
       status: false
+    };
+
+    const updatedTasks = [...tasks, newTask];
+    await updateRecords(updatedTasks);
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return dateString.substring(0, 10);
     }
-
-    const updatedRecords = [...records, newTask];
-    setRecords(updatedRecords);
-
-    const {error} = await supabase.from('records').update({data: updatedRecords}).eq('collection_id', collectionId);
-    if (error) console.error(error);
-  }
+  };
 
   return (
     <div className="task-editor max-w-[800px] my-0 mx-auto py-15 px-5">
       <Input
         placeholder="Task List"
         bordered={false}
-        className="text-4xl text-center font-bold p-0 border-0 outline-0 "
+        className="text-4xl text-center font-bold p-0 border-0 outline-0"
         value={title}
-        onChange={ChangeTitle}
+        onChange={handleTitleChange}
         style={{
           fontSize: '32px',
           boxShadow: "none",
           marginBottom: '30px',
         }}
       />
+      
       <Button
         type="primary"
         className={`w-50 ${lilitaOne.className} mb-15`}
@@ -204,58 +113,45 @@ export default function TaskEditor({ projectId }: TaskEditorProps) {
       >
         Create task
       </Button>
+
       <ul className="space-y-5 font-sans">
-        {records.map((item, index) => (
-          <li key={index} className="flex items-center justify-between p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow">
+        {tasks.map((task) => (
+          <li key={task.id} className="flex items-center justify-between p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow">
             <div>
-              <h3 className="font-semibold">{item.name}</h3>
-              <p className={`text-gray-600 text-sm ${item.status ? "line-through" : ""}`}>
-                {formatDateForDisplay(item.deadline)}
+              <h3 className="font-semibold">{task.name}</h3>
+              <p className={`text-gray-600 text-sm ${task.status ? "line-through" : ""}`}>
+                {formatDateForDisplay(task.deadline)}
               </p>
             </div>
             <div className="flex gap-2">
-              <Button size="small" onClick={() => EditingTask(item)}>
+              <Button size="small" onClick={() => handleEditTask(task)}>
                 Edit
               </Button>
-              {item.status ? (
-                <Button type="default" disabled size="small">
-                  Done✔️
-                </Button>
-              ) : (
-                <Button 
-                  type="primary" 
-                  onClick={() => changeStatus(item.id, true)}  
-                  size="small"
-                >
-                  Done❌
-                </Button>
-              )}
+              <Button 
+                type={task.status ? "default" : "primary"} 
+                onClick={() => changeStatus(task.id, !task.status)}
+                size="small"
+                disabled={task.status}
+              >
+                {task.status ? "Done✔️" : "Done❌"}
+              </Button>
             </div>
           </li>
         ))}
       </ul>
+
       <Modal
         title="Edit Task"
         open={isModalOpen}
-        onCancel={CloseModal}
+        onCancel={handleCloseModal}
         footer={[
-          <Button key="cancel" onClick={CloseModal}>
-            Cancel
-          </Button>,
-          <Button 
-            key="submit" 
-            type="primary" 
-            onClick={() => form.submit()}
-          >
+          <Button key="cancel" onClick={handleCloseModal}>Cancel</Button>,
+          <Button key="submit" type="primary" onClick={() => form.submit()}>
             Save Changes
           </Button>,
         ]}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={HandleSubmit}
-        >
+        <Form form={form} layout="vertical" onFinish={handleSubmit}>
           <Form.Item
             label="Task Name"
             name="name"
@@ -263,16 +159,8 @@ export default function TaskEditor({ projectId }: TaskEditorProps) {
           >
             <Input placeholder="Enter task name" />
           </Form.Item>
-          
-          <Form.Item
-            label="Deadline"
-            name="deadline"
-          >
-            <DatePicker 
-              placeholder="Select deadline" 
-              style={{ width: '100%' }}
-              format="DD.MM.YYYY" 
-            />
+          <Form.Item label="Deadline" name="deadline">
+            <DatePicker placeholder="Select deadline" style={{ width: '100%' }} format="DD.MM.YYYY" />
           </Form.Item>
         </Form>
       </Modal>
