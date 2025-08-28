@@ -3,7 +3,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import type { InputRef, TableProps } from "antd";
 import { Button, Form, Input, Popconfirm, Table } from "antd";
 import { supabase } from "@/app/utils/supabase/client";
-import { processLock } from "@supabase/supabase-js";
+
 
 type FormInstance<T> = React.ComponentRef<typeof Form<T>>;
 
@@ -111,7 +111,7 @@ interface TableEditorProps {
 type ColumnTypes = Exclude<TableProps<DataType>["columns"], undefined>;
 
 export default function TableEditor({ projectId }: TableEditorProps) {
-    const project_id = projectId.split('_')[1];
+    const project_id = projectId;
     const [fields, setFields] = useState<any[]>([]);
     const [dataSource, setDataSource] = useState<DataType[]>([]);
     

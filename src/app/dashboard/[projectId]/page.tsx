@@ -18,7 +18,7 @@ export default async function Project({params, searchParams}: PageProps) {
             case 'table':
                 return <TableEditor projectId={projectId}></TableEditor>;
             case 'document':
-                return <DocEditor></DocEditor>;
+                return <DocEditor projectId={projectId}></DocEditor>;
             case 'tasks':
                 return <TaskEditor></TaskEditor>;
             default:

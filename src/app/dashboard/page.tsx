@@ -19,17 +19,17 @@ export default function Dashboard() {
                 alert('Error')
                 return;
             }
-            const {data: collection, error: collectionError } = await supabase.from('collections').insert({project_id: project.id, name: 'table', fields:[{name: "col1", type: "text"}]}).select('id').single();
+            const {data: collection, error: collectionError } = await supabase.from('collections').insert({project_id: project.id, name: 'table', fields:[{"title": "name","editable":true, "dataIndex": "name"}, {"title": "data", "editable":true, "dataIndex": "data"}]}).select('id').single();
             if (collectionError) { 
                 alert('collection error')
                 return;
             }
-            const {data: records, error: recordsError } = await supabase.from('records').insert({collection_id: collection.id, data: {}})
+            const {data: records, error: recordsError } = await supabase.from('records').insert({collection_id: collection.id, data: [{"key": "0", "data": "data", "name": "name"}]})
             if (recordsError) {
                 alert('records error')
                 return;
             }
-            const projectId = `${dataType}_${project.id}`;
+            const projectId = `${project.id}`;
             router.push(`/dashboard/${projectId}?type=${dataType}`);
         }
         if (dataType === 'tasks') {
@@ -38,7 +38,7 @@ export default function Dashboard() {
                 alert('Error')
                 return;
             }
-            const {data: collection, error: collectionError } = await supabase.from('collections').insert({project_id: project.id, name: 'tasks', fields:[{name: "task1", status: false}]}).select('id').single();
+            const {data: collection, error: collectionError } = await supabase.from('collections').insert({project_id: project.id, name: 'tasks', fields:[{"name": "task1", "status": false}]}).select('id').single();
             if (collectionError) { 
                 alert('collection error')
                 return;
@@ -48,7 +48,7 @@ export default function Dashboard() {
                 alert('records error')
                 return;
             }
-            const projectId = `${dataType}_${project.id}`;
+            const projectId = `${project.id}`;
             router.push(`/dashboard/${projectId}?type=${dataType}`);
         }
         if (dataType === 'document') {
@@ -57,17 +57,17 @@ export default function Dashboard() {
                 alert('project error')
                 return;
             }
-            const {data: collection, error: collectionError } = await supabase.from('collections').insert({project_id: project.id, name: 'doc', fields: {name: "docCol"}}).select('id').single();
+            const {data: collection, error: collectionError } = await supabase.from('collections').insert({project_id: project.id, name: 'doc', fields: {"name": "docs"}}).select('id').single();
             if (collectionError) {
                 alert('collection error')
                 return;
             }
-            const {data: records, error: recordsError} = await supabase.from('records').insert({data: {}, collection_id: collection.id});
+            const {data: records, error: recordsError} = await supabase.from('records').insert({data: {"data": "" }, collection_id: collection.id});
             if (recordsError) {
                 alert('records error')
                 return;
             }
-            const projectId = `${dataType}_${project.id}`;
+            const projectId = `${project.id}`;
             router.push(`/dashboard/${projectId}?type=${dataType}`);
         }
 
