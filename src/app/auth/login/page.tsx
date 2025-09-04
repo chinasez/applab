@@ -81,7 +81,7 @@ export default function LoginPage() {
               type="primary"
               htmlType="submit"
               onClick={handleSubmit}
-              className={`${lilitaOne.className} w-full`}
+              className={`${lilitaOne.className} w-full mb-5`}
             >
               Submit
               {loading && (
@@ -90,6 +90,10 @@ export default function LoginPage() {
               Loading...
             </p>)}
             </Button>
+            <div className="flex items-center justify-between">
+              <a className={`block ${lilitaOne.className}`} href="/">Back to Home</a>
+              <a className={`block text-right  ${lilitaOne.className}`} href="/auth/register">Don't have an account? Sign Up</a>
+            </div>
           </Form.Item>
         </Form>
       </div>

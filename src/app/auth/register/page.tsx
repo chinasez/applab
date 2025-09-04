@@ -74,6 +74,10 @@ export default function RegisterPage(): React.ReactNode {
             <Button type="primary" htmlType="submit" onClick={handleSubmit} className={`${lilitaOne.className} w-full mb-5`}>
               Submit
             </Button>
+            <div className="flex justify-between">
+              <a className={`block ${lilitaOne.className}`} href="/">Back to Home</a>
+              <a className={`block text-right  ${lilitaOne.className}`} href="/auth/login">Already have an account? Sign In</a>
+            </div>
             {loading && (
               <p
             className="text-center">
