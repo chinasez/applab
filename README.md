@@ -33,7 +33,7 @@ Current Features
 	•	Public landing page
 	•	Route protection for private pages
 
-Dependencies
+---Dependencies---
 
 # Core
 next
@@ -48,6 +48,8 @@ antd
 
 # (Optional)
 tailwindcss
+
+---
 
 Getting Started
 
